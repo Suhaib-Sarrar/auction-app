@@ -8,7 +8,7 @@ class Owner(BaseModel):
     owner_password: str
 
 
-class Shwo_Owner(BaseModel):
+class Show_Owner(BaseModel):
     owner_id: int
     owner_name: str
     owner_email: str
@@ -18,18 +18,21 @@ class Shwo_Owner(BaseModel):
         from_attributes = True
 
 
-class custamer(BaseModel):
-    custamer_id: int
-    custamer_name: str
-    custamer_email: str
-    custamer_password: str
+class Customer(BaseModel):
+    customer_id: int
+    customer_name: str
+    customer_email: str
+    customer_password: str
 
 
-class Shwo_custamer(BaseModel):
-    custamer_id: int
-    custamer_name: str
-    custamer_email: str
-    custamer_password: str
+class Show_customer(BaseModel):
+    customer_id: int
+    customer_name: str
+    customer_email: str
+    customer_password: str
+
+    class Config:
+        from_attributes = True
 
 
 class product(BaseModel):

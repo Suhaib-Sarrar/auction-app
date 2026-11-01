@@ -1,9 +1,8 @@
-from typing import List
 from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy.orm import Session
 from .. import schemas, models
 from ..database import get_db
-
+from ..hashing import Hash
 
 router = APIRouter(
     prefix="/owner",
@@ -17,11 +16,11 @@ def shwo_oner(db: Session = Depends(get_db)):
     return owner
 
 
-@router.post('/', response_model=schemas.Shwo_Owner)
+@router.post('/', response_model=schemas.Show_Owner)
 def create_owner(request: schemas.Owner, db: Session = Depends(get_db)):
     new_owner = models.Owner(
         owner_name=request.owner_name, owner_email=request.owner_email,
-        owner_password=request.owner_password
+        owner_password=Hash.bcrypt(request.owner_password)
     )
     db.add(new_owner)
     db.commit()

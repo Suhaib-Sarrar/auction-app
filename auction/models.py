@@ -12,16 +12,16 @@ class Owner(Base):
     owner_password = Column(String)
 
 
-class custamer(Base):
+class Customer(Base):
     __tablename__ = "Custamer"
-    custamer_id = Column(Integer, primary_key=True, index=True)
-    custamer_name = Column(String)
-    custamer_email = Column(String)
-    custamer_password = Column(String)
+    customer_id = Column(Integer, primary_key=True, index=True)
+    customer_name = Column(String)
+    customer_email = Column(String)
+    customer_password = Column(String)
 
 
-class product(Base):
+class Product(Base):
     __tablename__ = "Product"
     product_id = Column(Integer, primary_key=True, index=True)
     product_title = Column(String)
-    pass
+
