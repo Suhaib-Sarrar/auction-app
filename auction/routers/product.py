@@ -118,16 +118,16 @@ def destroy(id: int, db: Session = Depends(get_db),
     if product.owner_id != current_user.id and current_user.role.name != "admin":
         raise HTTPException(
             status_code=403, detail="You can only edit your own products")
-    if product.first().status == ProductStatus.sold:
+    if product.status == ProductStatus.sold:
         raise HTTPException(
             status_code=400, detail="Sold products cannot be deleted")
-    if not product.first():
+    if not product:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail=f"product with id {id} not found")
 
-    if product.first().owner_id != current_user.id:
+    if product.owner_id != current_user.id:
         raise HTTPException(status_code=403,
                             detail="You can only delete your own products")
-    product.delete(synchronize_session=False)
+    db.delete(product)
     db.commit()
     return 'Done'

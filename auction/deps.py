@@ -32,10 +32,19 @@ def require_owner(current_user: User = Depends(get_current_user)) -> User:
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Inantive user"
         )
-    if current_user.role.name not in("owner", "admin"):
+    if current_user.role.name not in ("owner", "admin"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only owners can do this"
+        )
+    return current_user
+
+
+def require_customer(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.role.name != "customer":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only customers can bid",
         )
     return current_user
 

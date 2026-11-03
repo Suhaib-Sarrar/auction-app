@@ -46,6 +46,7 @@ class User(Base):
 
     role = relationship("Role", back_populates="users")
     products = relationship("Product", back_populates="owner")
+    bids = relationship("Bid", back_populates="bidder")
 
 
 class ProductStatus(str, enum.Enum):
@@ -77,7 +78,39 @@ class Product(Base):
                         onupdate=func.now())
 
     owner = relationship("User", back_populates="products")
+    bids = relationship("Bid", back_populates="product",cascade="all,delete-orphan")
+    accepted_bid_count_id = Column(Integer, nullable=True)
 
     @property
     def owner_name(self):
         return self.owner.name
+
+
+class BidStatus(str, enum.Enum):
+    pending = "pending"
+    accepted = "accepted"
+    rejected = "rejected"
+
+
+class Bid(Base):
+    __tablename__ = "bids"
+
+    id = Column(Integer, primary_key=True, index=True)
+    product_id = Column(Integer, ForeignKey(
+        "product.id"), nullable=False, index=True)
+    bidder_id = Column(Integer, ForeignKey(
+        "users.id"), nullable=False, index=True)
+    amount = Column(Numeric(12, 2), nullable=False)
+    status = Column(Enum(BidStatus), nullable=False, default=BidStatus.pending)
+    created_at = Column(DateTime, server_default=func.now())
+
+    product = relationship("Product", back_populates="bids")
+    bidder = relationship("User", back_populates="bids")
+
+    @property
+    def bidder_name(self):
+        return self.bidder.name
+
+    @property
+    def product_title(self):
+        return self.product.title

@@ -2,7 +2,7 @@ from typing import Literal, Optional
 from pydantic import BaseModel, Field, ConfigDict, field_serializer
 from datetime import datetime
 from decimal import Decimal
-from .models import ProductStatus
+from .models import ProductStatus, BidStatus
 
 
 class User(BaseModel):
@@ -59,7 +59,7 @@ class Show_Product(BaseModel):
 
 class Show_Product_Owner(Show_Product):
     start_price: Decimal
-
+    accepted_bid_count_id: int | None = None
 
 class Token(BaseModel):
     access_token: str
@@ -68,3 +68,23 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     name: str | None = None
+
+
+class BidCreate(BaseModel):
+    amount: Decimal = Field(gt=0, max_digits=12, decimal_places=2)
+
+
+class Show_Bid(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    product_id: int
+    product_title: str
+    bidder_name: str
+    amount: Decimal
+    status: BidStatus
+    created_at: datetime
+
+    @field_serializer("created_at")
+    def format_created_at(self, value: datetime):
+        return value.strftime("%Y-%m-%d %I:%M %p")
