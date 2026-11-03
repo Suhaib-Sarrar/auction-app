@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy.orm import Session
 from .. import schemas, models
 from ..database import get_db
-from ..deps import require_owner
+from ..deps import require_owner, get_current_user
 from datetime import datetime, timezone
 from ..models import ProductStatus
 
@@ -44,10 +44,6 @@ def my_products(db: Session = Depends(get_db),
 @router.post('/', response_model=schemas.Show_Product)
 def create_product(data: schemas.Product, db: Session = Depends(get_db),
                    current_user: models.User = Depends(require_owner)):
-    if current_user.role.name != "owner":
-        raise HTTPException(
-            status_code=403, detail="Only owners can create products")
-
     end_time = to_naive_utc(data.end_time)
     if data.status == "open":
         check_can_open(end_time)
@@ -71,6 +67,9 @@ def create_product(data: schemas.Product, db: Session = Depends(get_db),
 def update_product(id: int, data: schemas.ProductUpdate, db: Session = Depends(get_db),
                    current_user: models.User = Depends(require_owner)):
     product = db.query(models.Product).filter(models.Product.id == id).first()
+    if product.owner_id != current_user.id and current_user.role.name != "admin":
+        raise HTTPException(
+            status_code=403, detail="You can only edit your own products")
     if not product:
         raise HTTPException(
             status_code=404, detail=f"product with id {id} not found")
@@ -115,7 +114,10 @@ def update_product(id: int, data: schemas.ProductUpdate, db: Session = Depends(g
 def destroy(id: int, db: Session = Depends(get_db),
             current_user: models.User = Depends(require_owner)):
     product = db.query(models.Product).filter(
-        models.Product.id == id)
+        models.Product.id == id).first()
+    if product.owner_id != current_user.id and current_user.role.name != "admin":
+        raise HTTPException(
+            status_code=403, detail="You can only edit your own products")
     if product.first().status == ProductStatus.sold:
         raise HTTPException(
             status_code=400, detail="Sold products cannot be deleted")

@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from .. import schemas, models
 from ..database import get_db
 from ..security import Hash
+from ..deps import require_permission
 
 
 router = APIRouter(
@@ -12,13 +13,19 @@ router = APIRouter(
 
 
 @router.get('/', response_model=list[schemas.Show_user])
-def show_user(db: Session = Depends(get_db)):
+def show_user(db: Session = Depends(get_db),
+              admin: models.User = Depends(require_permission("user:manage"))):
     user = db.query(models.User).all()
     return user
 
 
-@router.post('/', response_model=schemas.Show_user)
+@router.post('/', response_model=schemas.Show_user, status_code=201)
 def create_user(data: schemas.User, db: Session = Depends(get_db)):
+    name = data.name.lower()
+
+    if db.query(models.User).filter(models.User.name == name).first():
+        raise HTTPException(status_code=400, detail="Name already taken")
+
     role = db.query(models.Role).filter(
         models.Role.name == data.role).first()
     if not role:
@@ -26,8 +33,10 @@ def create_user(data: schemas.User, db: Session = Depends(get_db)):
         db.add(role)
         db.commit()
         db.refresh(role)
+
     new_user = models.User(
-        name=data.name.lower(), email=data.email,
+        name=name,
+        email=data.email,
         password=Hash.bcrypt(data.password),
         role_id=role.id
     )
@@ -38,7 +47,8 @@ def create_user(data: schemas.User, db: Session = Depends(get_db)):
 
 
 @router.delete('/{id}')
-def destroy(id: int, db: Session = Depends(get_db)):
+def destroy(id: int, db: Session = Depends(get_db),
+            admin: models.User = Depends(require_permission("user:manage"))):
     user = db.query(models.User).filter(
         models.User.id == id)
     if not user.first():
