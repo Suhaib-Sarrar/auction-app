@@ -1,3 +1,5 @@
-__pycache__
-auction-env
-.DS_Store
+auction-env/
+*.db
+.env
+celerybeat-schedule*
+__pycache__/
