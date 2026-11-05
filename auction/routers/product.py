@@ -1,10 +1,13 @@
-from fastapi import APIRouter, Depends, status, HTTPException
+from fastapi import APIRouter, Depends, status, HTTPException, Query, File, UploadFile
 from sqlalchemy.orm import Session
 from .. import schemas, models
 from ..database import get_db
 from ..deps import require_owner, get_current_user
 from datetime import datetime, timezone
 from ..models import ProductStatus
+import csv
+import io
+from decimal import Decimal, InvalidOperation
 
 
 router = APIRouter(
@@ -39,6 +42,77 @@ def my_products(db: Session = Depends(get_db),
                 current_user: models.User = Depends(require_owner)):
     return db.query(models.Product).filter(
         models.Product.owner_id == current_user.id).all()
+
+
+@router.post('/import')
+def import_products(file: UploadFile = File(...), db: Session = Depends(get_db),
+                    current_user: models.User = Depends(require_owner)):
+    if not file.filename.lower().endswith('.csv'):
+        raise HTTPException(
+            status_code=400, detail="Please upload a .csv file")
+
+    try:
+        text = file.file.read().decode('utf-8-sig')
+    except UnicodeDecodeError:
+        raise HTTPException(
+            status_code=400, detail="File must be UTF-8 encoded")
+
+    reader = csv.DictReader(io.StringIO(text))
+    headers = {h.strip() for h in (reader.fieldnames or [])}
+    if not {"name", "title", "start_price"}.issubset(headers):
+        raise HTTPException(status_code=400,
+                            detail="CSV must have columns: name, title, start_price")
+
+    saved = 0
+    errors = []
+
+    for line_no, row in enumerate(reader, start=2):
+        row = {k.strip(): (v or "").strip() for k, v in row.items() if k}
+        try:
+            if not row["name"] or not row["title"]:
+                raise ValueError("name and title are required")
+
+            try:
+                price = Decimal(row["start_price"])
+            except InvalidOperation:
+                raise ValueError("start_price is not a number")
+            if not price.is_finite() or price < 0 or price >= Decimal("10000000000"):
+                raise ValueError("start_price is out of range")
+            price = price.quantize(Decimal("0.01"))
+
+            row_status = row.get("status") or "draft"
+            if row_status not in ("draft", "open"):
+                raise ValueError("status must be draft or open")
+
+            end_time = None
+            if row.get("end_time"):
+                try:
+                    end_time = to_naive_utc(
+                        datetime.fromisoformat(row["end_time"].replace("Z", "+00:00")))
+                except ValueError:
+                    raise ValueError("end_time format is invalid")
+
+            if row_status == "open" and (end_time is None or end_time <= utcnow()):
+                raise ValueError(
+                    "an open product needs an end_time in the future")
+
+        except ValueError as e:
+            errors.append({"row": line_no, "error": str(e)})
+            continue
+
+        db.add(models.Product(
+            name=row["name"],
+            title=row["title"],
+            owner_id=current_user.id,
+            start_price=price,
+            current_price=price,
+            end_time=end_time,
+            status=ProductStatus(row_status),
+        ))
+        saved += 1
+
+    db.commit()
+    return {"saved": saved, "failed": len(errors), "errors": errors}
 
 
 @router.post('/', response_model=schemas.Show_Product)
