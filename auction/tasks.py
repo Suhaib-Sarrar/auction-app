@@ -2,6 +2,7 @@ import os
 import smtplib
 from email.message import EmailMessage
 
+from datetime import datetime, timezone
 from . import models
 from .celery_app import celery_app
 from .database import SessionLocal
@@ -55,5 +56,24 @@ def send_bid_accepted_email(bid_id: int):
             f"The owner accepted your bid of {bid.amount} "
             f"on '{bid.product.title}'. Congratulations!\n",
         )
+    finally:
+        db.close()
+
+
+@celery_app.task
+def close_expired_auctions():
+    db = SessionLocal()
+    try:
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
+        expired = (db.query(models.Product)
+                   .filter(models.Product.status == models.ProductStatus.open,
+                           models.Product.end_time <= now)
+                   .with_for_update(skip_locked=True)
+                   .all())
+        for product in expired:
+            product.status = (models.ProductStatus.ended if product.bid_count > 0
+                              else models.ProductStatus.closed)
+        db.commit()
+        return len(expired)
     finally:
         db.close()
