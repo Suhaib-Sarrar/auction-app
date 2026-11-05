@@ -8,6 +8,7 @@ from .. import schemas, models
 from ..database import get_db
 from ..deps import get_current_user, require_customer, require_owner
 from ..models import ProductStatus, BidStatus
+from ..tasks import send_new_bid_email, send_bid_accepted_email
 from .product import utcnow
 
 router = APIRouter(tags=['bids'])
@@ -59,6 +60,10 @@ def place_bid(id: int, data: schemas.BidCreate, db: Session = Depends(get_db),
     db.add(bid)
     db.commit()
     db.refresh(bid)
+    try:
+        send_new_bid_email.delay(bid.id)
+    except Exception:
+        print("Could not queue the email")
     return bid
 
 
@@ -123,6 +128,10 @@ def accept_bid(bid_id: int, db: Session = Depends(get_db),
 
     db.commit()
     db.refresh(bid)
+    try:
+        send_bid_accepted_email.delay(bid.id)
+    except Exception:
+        print("Could not queue the email")
     return bid
 
 
