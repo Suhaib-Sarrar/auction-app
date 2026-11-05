@@ -2,12 +2,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
+SQLCHAMY_DATABASE_URL = 'postgresql+psycopg://auction:auction@localhost:5432/auction'
 
-SQLALCHAMY_DATABASE_URL = 'sqlite:///./auction.db'
-
-engine = create_engine(SQLALCHAMY_DATABASE_URL, connect_args={
-                       "check_same_thread": False})
-
+engine = create_engine(SQLCHAMY_DATABASE_URL)
 
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False,)
 
@@ -20,5 +17,3 @@ def get_db():
         yield db
     finally:
         db.close()
-
-
