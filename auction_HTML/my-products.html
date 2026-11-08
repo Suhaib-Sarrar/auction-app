@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>My products · Simple Auction</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .panel {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .panel h3 {
+            margin: 0 0 12px;
+        }
+
+        .row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 12px;
+        }
+
+        .panel label {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            font-size: .9rem;
+        }
+
+        .panel input,
+        .panel select {
+            padding: 8px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            font: inherit;
+        }
+
+        .row-actions {
+            margin-top: 12px;
+            display: flex;
+            gap: 8px;
+        }
+
+        button.secondary {
+            background: #e8ecf8;
+            color: var(--primary) !important;
+        }
+
+        button.danger {
+            background: #d64545;
+        }
+
+        .tablewrap {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 12px;
+        }
+
+        th,
+        td {
+            text-align: left;
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--line);
+            vertical-align: top;
+        }
+
+        th {
+            font-size: .85rem;
+            color: var(--muted);
+        }
+
+        .acts {
+            display: flex;
+            gap: 6px;
+        }
+
+        .tag {
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: .8rem;
+            background: #eceff6;
+        }
+
+        .tag.open {
+            background: #e6f6ec;
+            color: #17653a;
+        }
+
+        .tag.sold {
+            background: #e8ecf8;
+            color: #2f5bea;
+        }
+
+        .tag.closed,
+        .tag.ended {
+            background: #fdeaea;
+            color: #9b1c1c;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <a class="brand" href="index.html">Simple Auction</a>
+        <nav id="nav"></nav>
+    </header>
+
+    <main>
+        <h2>My products</h2>
+        <div id="msg" class="msg" hidden></div>
+
+        <div id="content" hidden>
+            <form id="pform" class="panel">
+                <h3 id="ptitle">Add product</h3>
+                <div class="row">
+                    <label>Name <input name="name" required></label>
+                    <label>Title <input name="title" required maxlength="255"></label>
+                    <label>Start price <input name="start_price" type="number" step="0.01" min="0" required></label>
+                    <label>Status
+                        <select name="status">
+                            <option value="draft">Draft (hidden)</option>
+                            <option value="open">Open (needs end time)</option>
+                        </select>
+                    </label>
+                    <label>End time (your local time) <input name="end_time" type="datetime-local"></label>
+                </div>
+                <div class="row-actions">
+                    <button id="save">Add product</button>
+                    <button type="button" id="cancel" class="secondary" hidden>Cancel edit</button>
+                </div>
+            </form>
+
+            <form id="iform" class="panel">
+                <h3>Import from CSV</h3>
+                <p class="muted">Columns: name, title, start_price, status (optional), end_time (optional, e.g.
+                    2026-12-30T18:00:00Z)</p>
+                <input type="file" name="file" accept=".csv" required>
+                <button>Import</button>
+            </form>
+
+            <div class="tablewrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th>Status</th>
+                            <th>Start</th>
+                            <th>Current</th>
+                            <th>Bids</th>
+                            <th>Ends</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="rows"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script src="js/api.js"></script>
+    <script src="js/my-products.js"></script>
+</body>
+
+</html>

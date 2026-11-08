@@ -78,7 +78,8 @@ class Product(Base):
                         onupdate=func.now())
 
     owner = relationship("User", back_populates="products")
-    bids = relationship("Bid", back_populates="product",cascade="all,delete-orphan")
+    bids = relationship("Bid", back_populates="product",
+                        cascade="all,delete-orphan")
     accepted_bid_count_id = Column(Integer, nullable=True)
 
     @property
@@ -114,3 +115,14 @@ class Bid(Base):
     @property
     def product_title(self):
         return self.product.title
+
+
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"),
+                     nullable=False, index=True)
+    message = Column(String, nullable=False)
+    is_read = Column(Boolean, nullable=False, default=False)
+    created_at = Column(DateTime, server_default=func.now())

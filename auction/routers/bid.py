@@ -58,12 +58,11 @@ def place_bid(id: int, data: schemas.BidCreate, db: Session = Depends(get_db),
     product.the_number_of_auction += 1
 
     db.add(bid)
+    db.add(models.Notification(
+        user_id=product.owner_id,
+        message=f"{current_user.name} placed a bid of {data.amount} on '{product.title}'"))
     db.commit()
     db.refresh(bid)
-    try:
-        send_new_bid_email.delay(bid.id)
-    except Exception:
-        print("Could not queue the email")
     return bid
 
 
@@ -126,12 +125,15 @@ def accept_bid(bid_id: int, db: Session = Depends(get_db),
     product.status = ProductStatus.sold
     product.accepted_bid_id = bid.id
 
+    bid.status = BidStatus.accepted
+    product.status = ProductStatus.sold
+    product.accepted_bid_id = bid.id
+
+    db.add(models.Notification(
+        user_id=bid.bidder_id,
+        message=f"Your bid of {bid.amount} on '{product.title}' was accepted"))
     db.commit()
     db.refresh(bid)
-    try:
-        send_bid_accepted_email.delay(bid.id)
-    except Exception:
-        print("Could not queue the email")
     return bid
 
 

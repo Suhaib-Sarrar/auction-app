@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Notifications · Simple Auction</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <header><a class="brand" href="index.html">Simple Auction</a>
+        <nav id="nav"></nav>
+    </header>
+    <main>
+        <h2>Notifications</h2>
+        <div id="msg" class="msg" hidden></div>
+        <div id="list"></div>
+    </main>
+    <script src="js/api.js"></script>
+    <script>
+        const list = document.getElementById("list");
+        async function load() {
+            try {
+                const items = await api("/notifications/");
+                list.innerHTML = items.length ? items.map((n) => `<div class="note ${n.is_read ? "" : "unread"}">
+        <div>${n.is_read ? esc(n.message) : "<b>" + esc(n.message) + "</b>"}<div class="muted">${esc(n.created_at)} UTC</div></div>
+        ${n.is_read ? "" : `<button class="secondary" data-read="${n.id}">Mark read</button>`}</div>`).join("")
+                    : `<div class="empty"><img src="img/bell.svg" alt=""><p>You're all caught up.</p></div>`;
+            } catch (e) { flash(e.message, true); }
+        }
+        list.addEventListener("click", async (e) => {
+            const b = e.target.closest("[data-read]");
+            if (!b) return;
+            try { await api(`/notifications/${b.dataset.read}/read`, { method: "PUT" }); load(); }
+            catch (err) { flash(err.message, true); }
+        });
+        (async () => {
+            const user = await currentUser();
+            renderNav(user);
+            if (!user) { location.href = "login.html"; return; }
+            load();
+        })();
+    </script>
+</body>
+
+</html>

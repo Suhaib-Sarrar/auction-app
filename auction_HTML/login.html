@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Login · Simple Auction</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <header><a class="brand" href="index.html">Simple Auction</a></header>
+    <main class="auth">
+        <div class="narrow">
+            <h2>Login</h2>
+            <div id="msg" class="msg" hidden></div>
+            <form id="f">
+                <label>Name <input name="name" required autocomplete="username"></label>
+                <label>Password <input name="password" type="password" required autocomplete="current-password"></label>
+                <button>Login</button>
+            </form>
+            <p class="muted">No account? <a href="register.html">Register</a></p>
+        </div><img src="img/hero.svg" alt="">
+    </main>
+    <script src="js/api.js"></script>
+    <script>
+        document.getElementById("f").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const fd = new FormData(e.target);
+            try {
+                const data = await api("/auth/login", {
+                    method: "POST",
+                    form: { username: fd.get("name").trim(), password: fd.get("password") },
+                });
+                setToken(data.access_token);
+                location.href = "index.html";
+            } catch (err) { flash(err.message, true); }
+        });
+    </script>
+</body>
+
+</html>

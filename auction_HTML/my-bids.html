@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>My bids · Simple Auction</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <header><a class="brand" href="index.html">Simple Auction</a>
+        <nav id="nav"></nav>
+    </header>
+    <main>
+        <h2>My bids</h2>
+        <div id="msg" class="msg" hidden></div>
+        <div class="tablewrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th>Time (UTC)</th>
+                    </tr>
+                </thead>
+                <tbody id="rows"></tbody>
+            </table>
+        </div>
+    </main>
+    <script src="js/api.js"></script>
+    <script>
+        (async () => {
+            const user = await currentUser();
+            renderNav(user);
+            if (!user) { location.href = "login.html"; return; }
+            try {
+                const bids = await api("/bids/me");
+                document.getElementById("rows").innerHTML = bids.length
+                    ? bids.map((b) => `<tr><td>${esc(b.product_title)}</td><td><b>${esc(b.amount)}</b></td>
+          <td><span class="tag ${esc(b.status)}">${esc(b.status)}</span></td><td>${esc(b.created_at)}</td></tr>`).join("")
+                    : `<tr><td colspan="4"><div class="empty"><img src="img/empty.svg" alt=""><p>No bids yet. <a href="index.html">Browse auctions</a></p></div></td></tr>`;
+            } catch (e) { flash(e.message, true); }
+        })();
+    </script>
+</body>
+
+</html>

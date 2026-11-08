@@ -4,12 +4,18 @@ from .. import schemas, models
 from ..database import get_db
 from ..security import Hash
 from ..deps import require_permission
-
+from ..deps import get_current_user
 
 router = APIRouter(
     prefix="/user",
     tags=['user']
 )
+
+
+@router.get('/me')
+def me(current_user: models.User = Depends(get_current_user)):
+    return {"name": current_user.name, "email": current_user.email,
+            "role": current_user.role.name}
 
 
 @router.get('/', response_model=list[schemas.Show_user])

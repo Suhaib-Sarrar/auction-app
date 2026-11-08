@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Home · Simple Auction</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header><a class="brand" href="index.html">Simple Auction</a><nav id="nav"></nav></header>
+<section class="hero intro">
+  <div>
+    <h1>Bid smart. Sell fast.</h1>
+    <p>Owners list products with a timer. Customers bid while the auction is open. When time is up, the owner accepts the best bid and the winner is notified.</p>
+    <a class="btn" href="#open">Browse auctions</a>
+  </div>
+  <img src="img/hero.svg" alt="Gavel, price tag and rising bids">
+</section>
+<ol class="steps intro">
+  <li><b>1. List</b>Owners add a product with a start price and an end time.</li>
+  <li><b>2. Bid</b>Customers bid higher than the current price.</li>
+  <li><b>3. Win</b>The owner accepts the highest bid after the timer ends.</li>
+</ol>
+<main id="open">
+  <h2>Open auctions</h2>
+  <div class="searchbar">
+    <input id="q" type="search" placeholder="Search by title, name or owner…" aria-label="Search auctions" autocomplete="off">
+    <span id="count" class="muted"></span>
+  </div>
+  <div id="msg" class="msg" hidden></div>
+  <div id="grid" class="grid"><p class="muted">Loading…</p></div>
+</main>
+<footer>Times are shown in UTC.</footer>
+<script src="js/api.js"></script>
+<script src="js/products.js"></script>
+</body>
+</html>

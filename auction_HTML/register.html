@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Register · Simple Auction</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <header><a class="brand" href="index.html">Simple Auction</a></header>
+    <main class="auth">
+        <div class="narrow">
+            <h2>Register</h2>
+            <div id="msg" class="msg" hidden></div>
+            <form id="f">
+                <label>Name <input name="name" required minlength="2" maxlength="100" autocomplete="username"></label>
+                <label>Email <input name="email" type="email" required autocomplete="email"></label>
+                <label>Password (8+ characters) <input name="password" type="password" required minlength="8"
+                        maxlength="50" autocomplete="new-password"></label>
+                <label>I want to
+                    <select name="role">
+                        <option value="customer">Bid on products (customer)</option>
+                        <option value="owner">Sell products (owner)</option>
+                    </select>
+                </label>
+                <button>Create account</button>
+            </form>
+            <p class="muted">Already registered? <a href="login.html">Login</a></p>
+        </div><img src="img/hero.svg" alt="">
+    </main>
+    <script src="js/api.js"></script>
+    <script>
+        document.getElementById("f").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const fd = new FormData(e.target);
+            try {
+                await api("/user/", {
+                    method: "POST",
+                    body: {
+                        name: fd.get("name").trim(),
+                        email: fd.get("email").trim(),
+                        password: fd.get("password"),
+                        role: fd.get("role"),
+                    },
+                });
+                location.href = "login.html";
+            } catch (err) { flash(err.message, true); }
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Bids · Simple Auction</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <header><a class="brand" href="index.html">Simple Auction</a>
+        <nav id="nav"></nav>
+    </header>
+    <main>
+        <h2 id="h">Bids</h2>
+        <p><a href="my-products.html">← My products</a></p>
+        <div id="msg" class="msg" hidden></div>
+        <div class="tablewrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Bidder</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th>Time (UTC)</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="rows"></tbody>
+            </table>
+        </div>
+    </main>
+    <script src="js/api.js"></script>
+    <script>
+        const id = new URLSearchParams(location.search).get("id");
+        const rows = document.getElementById("rows");
+        function row(b, top) {
+            const act = top && b.status === "pending" ? `<button data-accept="${b.id}">Accept</button>` : "";
+            return `<tr><td>${esc(b.bidder_name)}</td><td><b>${esc(b.amount)}</b></td>
+    <td><span class="tag ${esc(b.status)}">${esc(b.status)}</span></td>
+    <td>${esc(b.created_at)}</td><td class="acts">${act}</td></tr>`;
+        }
+        async function load() {
+            try {
+                const bids = await api(`/products/${id}/bids`);
+                if (bids.length) document.getElementById("h").textContent = "Bids for “" + bids[0].product_title + "”";
+                rows.innerHTML = bids.length ? bids.map((b, i) => row(b, i === 0)).join("")
+                    : `<tr><td colspan="5"><div class="empty"><img src="img/empty.svg" alt=""><p>No bids yet.</p></div></td></tr>`;
+            } catch (e) { flash(e.message, true); }
+        }
+        rows.addEventListener("click", async (e) => {
+            const b = e.target.closest("[data-accept]");
+            if (!b || !confirm("Accept this bid? The product will be marked as sold.")) return;
+            try {
+                await api(`/bids/${b.dataset.accept}/accept`, { method: "POST" });
+                flash("Bid accepted. The winner was notified.", false);
+                load();
+            } catch (err) { flash(err.message, true); }
+        });
+        (async () => {
+            const user = await currentUser();
+            renderNav(user);
+            if (!user) { location.href = "login.html"; return; }
+            if (!id) { flash("Missing product id.", true); return; }
+            load();
+        })();
+    </script>
+</body>
+
+</html>
