@@ -145,8 +145,28 @@
                 <h3>Import from CSV</h3>
                 <p class="muted">Columns: name, title, start_price, status (optional), end_time (optional, e.g.
                     2026-12-30T18:00:00Z)</p>
-                <input type="file" name="file" accept=".csv" required>
-                <button>Import</button>
+                <input type="file" name="file" accept=".csv,.CSV" required>
+                <button type="submit">Preview products</button>
+                <div id="import-preview" class="tablewrap" style="margin-top:12px" hidden>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th><input type="checkbox" id="import-select-all" title="Select all valid products"></th>
+                                <th>Row</th>
+                                <th>Name</th>
+                                <th>Title</th>
+                                <th>Start price</th>
+                                <th>Status</th>
+                                <th>Validation</th>
+                            </tr>
+                        </thead>
+                        <tbody id="import-preview-rows"></tbody>
+                    </table>
+                    <div class="row-actions">
+                        <button type="button" id="confirm-import">Import selected</button>
+                        <button type="button" id="cancel-import" class="secondary">Cancel</button>
+                    </div>
+                </div>
             </form>
 
             <div class="tablewrap">

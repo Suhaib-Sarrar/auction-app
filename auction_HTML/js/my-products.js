@@ -1,5 +1,6 @@
 let editing = null;      // the product being edited, or null when adding
 let products = [];
+let importRows = [];
  
 const pform = document.getElementById("pform");
 const iform = document.getElementById("iform");
@@ -115,17 +116,62 @@ document.getElementById("rows").addEventListener("click", async (e) => {
 iform.addEventListener("submit", async (e) => {
   e.preventDefault();
   try {
-    const res = await fetch(API_BASE + "/products/import", {
+    const res = await fetch(API_BASE + "/products/import/preview", {
       method: "POST",
       headers: { Authorization: "Bearer " + getToken() },
       body: new FormData(iform),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Import failed");
+    if (!res.ok) throw new Error(data.detail || "Preview failed");
+
+    importRows = data.rows;
+    document.getElementById("import-preview-rows").innerHTML = importRows.map((row, i) => `<tr>
+      <td><input type="checkbox" class="import-row-select" data-index="${i}" ${row.valid ? "checked" : "disabled"}></td>
+      <td>${row.row}</td>
+      <td>${esc(row.name)}</td>
+      <td>${esc(row.title)}</td>
+      <td>${esc(row.start_price)}</td>
+      <td>${esc(row.status)}</td>
+      <td class="${row.valid ? "" : "muted"}">${row.valid ? "Valid" : esc(row.error)}</td>
+    </tr>`).join("");
+
+    document.getElementById("import-select-all").checked = false;
+    document.getElementById("import-preview").hidden = false;
+    flash(`${data.valid} valid product(s), ${data.invalid} invalid.`, data.valid === 0);
+  } catch (err) {
+    flash(err.message, true);
+  }
+});
+
+function resetImportPreview() {
+  importRows = [];
+  document.getElementById("import-preview").hidden = true;
+  document.getElementById("import-preview-rows").innerHTML = "";
+  iform.reset();
+}
+
+document.getElementById("import-select-all").addEventListener("change", (e) => {
+  document.querySelectorAll(".import-row-select:not(:disabled)").forEach((box) => {
+    box.checked = e.target.checked;
+  });
+});
+
+document.getElementById("cancel-import").addEventListener("click", resetImportPreview);
+
+document.getElementById("confirm-import").addEventListener("click", async () => {
+  const selected = [...document.querySelectorAll(".import-row-select:checked")]
+    .map((box) => importRows[+box.dataset.index]);
+  if (!selected.length) {
+    flash("Select at least one valid product.", true);
+    return;
+  }
+
+  try {
+    const data = await api("/products/import/confirm", { method: "POST", body: selected });
     let text = `Imported ${data.saved} product(s), ${data.failed} failed.`;
     if (data.errors.length) text += " " + data.errors.map((x) => `Row ${x.row}: ${x.error}`).join("; ");
     flash(text, data.saved === 0);
-    iform.reset();
+    resetImportPreview();
     load();
   } catch (err) {
     flash(err.message, true);

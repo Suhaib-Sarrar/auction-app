@@ -44,18 +44,14 @@ def my_products(db: Session = Depends(get_db),
         models.Product.owner_id == current_user.id).all()
 
 
-@router.post('/import')
-def import_products(file: UploadFile = File(...), db: Session = Depends(get_db),
-                    current_user: models.User = Depends(require_owner)):
+def read_csv_products(file: UploadFile):
     if not file.filename.lower().endswith('.csv'):
-        raise HTTPException(
-            status_code=400, detail="Please upload a .csv file")
+        raise HTTPException(status_code=400, detail="Please upload a .csv file")
 
     try:
         text = file.file.read().decode('utf-8-sig')
     except UnicodeDecodeError:
-        raise HTTPException(
-            status_code=400, detail="File must be UTF-8 encoded")
+        raise HTTPException(status_code=400, detail="File must be UTF-8 encoded")
 
     reader = csv.DictReader(io.StringIO(text))
     headers = {h.strip() for h in (reader.fieldnames or [])}
@@ -63,13 +59,16 @@ def import_products(file: UploadFile = File(...), db: Session = Depends(get_db),
         raise HTTPException(status_code=400,
                             detail="CSV must have columns: name, title, start_price")
 
-    saved = 0
-    errors = []
-
-    for line_no, row in enumerate(reader, start=2):
-        row = {k.strip(): (v or "").strip() for k, v in row.items() if k}
+    preview = []
+    for line_no, raw_row in enumerate(reader, start=2):
+        row = {k.strip(): (v or "").strip() for k, v in raw_row.items() if k}
+        item = {"row": line_no, "name": row.get("name", ""),
+                "title": row.get("title", ""),
+                "start_price": row.get("start_price", ""),
+                "status": row.get("status") or "draft",
+                "end_time": row.get("end_time") or None}
         try:
-            if not row["name"] or not row["title"]:
+            if not row.get("name") or not row.get("title"):
                 raise ValueError("name and title are required")
 
             try:
@@ -93,23 +92,66 @@ def import_products(file: UploadFile = File(...), db: Session = Depends(get_db),
                     raise ValueError("end_time format is invalid")
 
             if row_status == "open" and (end_time is None or end_time <= utcnow()):
-                raise ValueError(
-                    "an open product needs an end_time in the future")
+                raise ValueError("an open product needs an end_time in the future")
 
+            item.update({"start_price": str(price), "status": row_status,
+                         "end_time": end_time.isoformat() if end_time else None,
+                         "valid": True, "error": None})
         except ValueError as e:
-            errors.append({"row": line_no, "error": str(e)})
-            continue
+            item.update({"valid": False, "error": str(e)})
 
-        db.add(models.Product(
-            name=row["name"],
-            title=row["title"],
-            owner_id=current_user.id,
-            start_price=price,
-            current_price=price,
-            end_time=end_time,
-            status=ProductStatus(row_status),
-        ))
-        saved += 1
+        preview.append(item)
+
+    return preview
+
+
+@router.post('/import/preview')
+def preview_import(file: UploadFile = File(...),
+                  current_user: models.User = Depends(require_owner)):
+    rows = read_csv_products(file)
+    return {"rows": rows, "valid": sum(row["valid"] for row in rows),
+            "invalid": sum(not row["valid"] for row in rows)}
+
+
+@router.post('/import/confirm')
+def confirm_import(rows: list[dict], db: Session = Depends(get_db),
+                  current_user: models.User = Depends(require_owner)):
+    saved = 0
+    errors = []
+
+    for index, row in enumerate(rows, start=1):
+        try:
+            if not row.get("name") or not row.get("title"):
+                raise ValueError("name and title are required")
+
+            try:
+                price = Decimal(str(row["start_price"]))
+            except (InvalidOperation, KeyError):
+                raise ValueError("start_price is not a number")
+            if not price.is_finite() or price < 0 or price >= Decimal("10000000000"):
+                raise ValueError("start_price is out of range")
+            price = price.quantize(Decimal("0.01"))
+
+            row_status = row.get("status") or "draft"
+            if row_status not in ("draft", "open"):
+                raise ValueError("status must be draft or open")
+
+            end_time = None
+            if row.get("end_time"):
+                try:
+                    end_time = to_naive_utc(datetime.fromisoformat(str(row["end_time"])))
+                except ValueError:
+                    raise ValueError("end_time format is invalid")
+            if row_status == "open" and (end_time is None or end_time <= utcnow()):
+                raise ValueError("an open product needs an end_time in the future")
+
+            db.add(models.Product(name=row["name"].strip(), title=row["title"].strip(),
+                                  owner_id=current_user.id, start_price=price,
+                                  current_price=price, end_time=end_time,
+                                  status=ProductStatus(row_status)))
+            saved += 1
+        except (ValueError, KeyError) as e:
+            errors.append({"row": row.get("row", index), "error": str(e)})
 
     db.commit()
     return {"saved": saved, "failed": len(errors), "errors": errors}
