@@ -182,22 +182,24 @@ def create_product(data: schemas.Product, db: Session = Depends(get_db),
 @router.put('/{id}', response_model=schemas.Show_Product_Owner)
 def update_product(id: int, data: schemas.ProductUpdate, db: Session = Depends(get_db),
                    current_user: models.User = Depends(require_owner)):
-    product = db.query(models.Product).filter(models.Product.id == id).first()
-    if product.owner_id != current_user.id and current_user.role.name != "admin":
-        raise HTTPException(
-            status_code=403, detail="You can only edit your own products")
+    product = db.query(models.Product).filter(models.Product.id == id).with_for_update().first()
     if not product:
         raise HTTPException(
             status_code=404, detail=f"product with id {id} not found")
-    if product.owner_id != current_user.id:
+    if (product.owner_id != current_user.id
+            and current_user.role.name != "admin"):
         raise HTTPException(
             status_code=403, detail="You can only edit your own products")
     if product.status not in (ProductStatus.draft, ProductStatus.open):
         raise HTTPException(
             status_code=400, detail="This product can no longer be edited")
-    if product.status == ProductStatus.sold:
+
+    has_bids = db.query(models.Bid.id).filter(
+        models.Bid.product_id == product.id).first() is not None
+    if has_bids:
         raise HTTPException(
-            status_code=400, detail="Sold products cannot be modified")
+            status_code=400,
+            detail="Products with bids cannot be modified")
     changes = data.model_dump(exclude_unset=True)
 
     if "name" in changes:
@@ -205,9 +207,6 @@ def update_product(id: int, data: schemas.ProductUpdate, db: Session = Depends(g
     if "title" in changes:
         product.title = changes["title"]
     if "start_price" in changes:
-        if product.the_number_of_auction > 0:
-            raise HTTPException(status_code=400,
-                                detail="Cannot change start_price after bids exist")
         product.start_price = changes["start_price"]
         product.current_price = changes["start_price"]
     if "end_time" in changes:
@@ -230,20 +229,25 @@ def update_product(id: int, data: schemas.ProductUpdate, db: Session = Depends(g
 def destroy(id: int, db: Session = Depends(get_db),
             current_user: models.User = Depends(require_owner)):
     product = db.query(models.Product).filter(
-        models.Product.id == id).first()
-    if product.owner_id != current_user.id and current_user.role.name != "admin":
-        raise HTTPException(
-            status_code=403, detail="You can only edit your own products")
-    if product.status == ProductStatus.sold:
-        raise HTTPException(
-            status_code=400, detail="Sold products cannot be deleted")
+        models.Product.id == id).with_for_update().first()
     if not product:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail=f"product with id {id} not found")
-
-    if product.owner_id != current_user.id:
+    if (product.owner_id != current_user.id
+            and current_user.role.name != "admin"):
         raise HTTPException(status_code=403,
                             detail="You can only delete your own products")
+    if product.status == ProductStatus.sold:
+        raise HTTPException(
+            status_code=400, detail="Sold products cannot be deleted")
+
+    has_bids = db.query(models.Bid.id).filter(
+        models.Bid.product_id == product.id).first() is not None
+    if has_bids:
+        raise HTTPException(
+            status_code=400,
+            detail="Products with bids cannot be deleted")
+
     db.delete(product)
     db.commit()
     return 'Done'
